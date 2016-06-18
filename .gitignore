@@ -1,0 +1,8 @@
+[._]*.s[a-w][a-z]
+[._]s[a-w][a-z]
+
+*.py[cod]
+
+env
+
+roof_images/*.jpg
