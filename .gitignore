@@ -5,4 +5,5 @@
 
 env
 
+cache/*
 roof_images/*.jpg
