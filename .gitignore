@@ -6,4 +6,5 @@
 env
 
 cache/*
+log/*
 roof_images/*.jpg
