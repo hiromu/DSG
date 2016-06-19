@@ -70,14 +70,14 @@ if __name__ == '__main__':
     # Accuracy: 0.429371 (+/- 0.082896)
     # classifier = sklearn.svm.LinearSVC()
 
-    # Accuracy: 0.597375 (+/- 0.031583)
-    # classifier = sklearn.ensemble.RandomForestClassifier()
+    # Accuracy: 0.603881 (+/- 0.025576)
+    classifier = sklearn.ensemble.RandomForestClassifier()
 
     # Accuracy: 0.560627 (+/- 0.022474)
     # classifier = sklearn.ensemble.AdaBoostClassifier()
 
     # Accuracy: 0.636501 (+/- 0.030928)
-    classifier = xgboost.XGBClassifier()
+    # classifier = xgboost.XGBClassifier()
 
     scores = sklearn.cross_validation.cross_val_score(classifier, train_data, train_label, cv = 5, n_jobs = 5)
 
