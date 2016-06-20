@@ -7,62 +7,10 @@ import tensorflow as tf
 import sys
 
 from hsv import load
+from dataset import DataSet
 
 SIZE = 64
 LAYER = [32, 64, 1024, 4]
-
-class DataSet(object):
-    def __init__(self, images, labels):
-        images = numpy.multiply(images.astype(numpy.float32), 1.0 / 255.0)
-    
-        self._images = images
-        self._labels = labels
-    
-        self._num_examples = images.shape[0]
-        self._epochs_completed = 0
-        self._index_in_epoch = 0
-  
-    @property
-    def images(self):
-        return self._images
-  
-    @property
-    def labels(self):
-        return self._labels
-
-    @property
-    def num_examples(self):
-        return self._num_examples
-
-    @property
-    def epochs_completed(self):
-        return self._epochs_completed
-
-    def next_batch(self, batch_size):
-        start = self._index_in_epoch
-        self._index_in_epoch += batch_size
-  
-        if self._index_in_epoch > self._num_examples:
-            self._epochs_completed += 1
-    
-            perm = numpy.arange(self._num_examples)
-            numpy.random.shuffle(perm)
-            self._images = self._images[perm]
-            self._labels = self._labels[perm]
-    
-            start = 0
-            self._index_in_epoch = batch_size
-            assert batch_size <= self._num_examples
-  
-        end = self._index_in_epoch
-        return self._images[start:end], self._labels[start:end]
-
-def dense_to_one_hot(labels_dense, num_classes):
-    num_labels = labels_dense.shape[0]
-    index_offset = numpy.arange(num_labels) * num_classes
-    labels_one_hot = numpy.zeros((num_labels, num_classes))
-    labels_one_hot.flat[index_offset + labels_dense.ravel()] = 1
-    return labels_one_hot
 
 def weight_variable(shape):
     initial = tf.truncated_normal(shape, stddev = 0.1)
@@ -78,7 +26,7 @@ def conv2d(x, W):
 def max_pool_2x2(x):
     return tf.nn.max_pool(x, ksize = [1, 2, 2, 1], strides = [1, 2, 2, 1], padding = 'SAME')
 
-def predict(train, test, cache_dir, log_dir):
+def predict(train, test, cache_dir, log_dir, testing = False):
     with tf.Graph().as_default():
         with tf.name_scope('input'):
             x = tf.placeholder(tf.float32, [None, SIZE * SIZE], name = 'x-input')
@@ -138,15 +86,18 @@ def predict(train, test, cache_dir, log_dir):
                     summary_str, acc = sess.run([tf.merge_all_summaries(), accuracy], feed_dict = {x: batch[0], y_: batch[1], keep_prob: 1.0})
                     writer.add_summary(summary_str, i)
         
-                    print 'step %d, training accuracy %g' % (i, acc)
+                    print 'step %d, training accuracy %f' % (i, acc)
                     saver.save(sess, os.path.join(cache_dir, 'train_data'), global_step = i)
- 
-            return prediction.eval(feed_dict = {x: test.images, keep_prob: 1.0})
 
+            if testing:
+                acc = accuracy.eval(feed_dict = {x: test.images, y_: test.labels, keep_prob: 1.0})
+                print 'test accuracy %f' % acc
+            else:
+                return prediction.eval(feed_dict = {x: test.images, keep_prob: 1.0})
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        print '%s [output.csv]' % sys.argv[0]
+    if len(sys.argv) not in [2, 3]:
+        print '%s [output.csv] / %s [k-fold] [index]' % sys.argv[0]
         sys.exit()
 
     base_dir = os.path.dirname(sys.argv[0])
@@ -154,11 +105,25 @@ if __name__ == '__main__':
     log_dir = os.path.join(base_dir, 'log')
 
     train_id, train_data, train_label, test_id, test_data = load(base_dir)
-    train = DataSet(train_data, dense_to_one_hot(numpy.array(train_label) - 1, LAYER[-1]))
-    test = DataSet(test_data, numpy.zeros((test_data.shape[0], LAYER[-1])))
+    train_label = numpy.array(train_label) - 1
+    test_label = numpy.array([0] * test_data.shape[0])
 
-    test_label = predict(train, test, cache_dir, log_dir)
+    if len(sys.argv) == 3:
+        N = train_data.shape[0]
+        K, index = map(int, sys.argv[1:])
 
-    writer = csv.writer(open(sys.argv[1], 'w'))
-    writer.writerow(['id', 'label'])
-    writer.writerows(zip(test_id, test_label + 1))
+        train_index = range(N * index / K) + range(N * (index + 1) / K, N)
+        test_index = range(N * index / K, N * (index + 1) / K)
+
+        test_data, test_label = train_data[test_index], train_label[test_index]
+        train_data, train_label = train_data[train_index], train_label[train_index]
+
+    train = DataSet(train_data, train_label)
+    test = DataSet(test_data, test_label)
+
+    test_label = predict(train, test, cache_dir, log_dir, len(sys.argv) == 3)
+
+    if len(sys.argv) == 2:
+        writer = csv.writer(open(sys.argv[1], 'w'))
+        writer.writerow(['id', 'label'])
+        writer.writerows(zip(test_id, test_label + 1))
