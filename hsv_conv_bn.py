@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+# 5000 / Accuracy: 0.655250 (+/- 0.021717)
+
 import csv
 import numpy
 import os
