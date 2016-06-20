@@ -27,10 +27,9 @@ def vectorize(image_dir, files, cache_path = None):
 
         im = cv2.imread(os.path.join(image_dir, filename + '.jpg'))
         im = cv2.resize(im, (SIZE, SIZE), interpolation = cv2.INTER_CUBIC)
-        im = cv2.cvtColor(im, cv2.COLOR_RGB2HSV)
-        h, s, v = cv2.split(im)
+        im = numpy.vstack(cv2.split(im))
 
-        v = v.reshape(SIZE ** 2)
+        v = im.reshape(SIZE * SIZE * 3)
         if data == None:
             data = v
         else:
@@ -48,12 +47,12 @@ def load(base_dir):
 
     train_files = read_csv('id_train.csv')[1:]
     train_id = [file[0] for file in train_files]
-    train_data = vectorize(image_dir, train_id, cache_path('hsv_train_' + str(SIZE)))
+    train_data = vectorize(image_dir, train_id, cache_path('rgb_train_' + str(SIZE)))
     train_label = map(int, [file[1] for file in train_files])
 
     test_files = read_csv('sample_submission4.csv')[1:]
     test_id = [file[0] for file in test_files]
-    test_data = vectorize(image_dir, test_id, cache_path('hsv_test_' + str(SIZE)))
+    test_data = vectorize(image_dir, test_id, cache_path('rgb_test_' + str(SIZE)))
 
     return train_id, train_data, train_label, test_id, test_data
 
@@ -67,17 +66,17 @@ if __name__ == '__main__':
     # Accuracy: 0.434875 (+/- 0.000423)
     # classifier = sklearn.svm.SVC()
 
-    # Accuracy: 0.429371 (+/- 0.082896)
+    # Accuracy: 0.478015 (+/- 0.038127)
     # classifier = sklearn.svm.LinearSVC()
 
-    # Accuracy: 0.603881 (+/- 0.025576)
-    classifier = sklearn.ensemble.RandomForestClassifier()
+    # Accuracy: 0.609872 (+/- 0.027341)
+    # classifier = sklearn.ensemble.RandomForestClassifier()
 
-    # Accuracy: 0.560627 (+/- 0.022474)
+    # Accuracy: 0.574123 (+/- 0.039928)
     # classifier = sklearn.ensemble.AdaBoostClassifier()
 
-    # Accuracy: 0.636501 (+/- 0.030928)
-    # classifier = xgboost.XGBClassifier()
+    # Accuracy: 0.659373 (+/- 0.035545)
+    classifier = xgboost.XGBClassifier()
 
     scores = sklearn.cross_validation.cross_val_score(classifier, train_data, train_label, cv = 5, n_jobs = 5)
 
