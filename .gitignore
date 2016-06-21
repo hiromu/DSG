@@ -8,3 +8,4 @@ env
 cache/*
 log/*
 roof_images/*.jpg
+roof_images_cropped/*/*.jpg
