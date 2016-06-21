@@ -22,6 +22,13 @@ def bias_variable(shape):
     initial = tf.constant(0.1, shape = shape)
     return tf.Variable(initial)
 
+def batch_normalization(shape, input):
+    eps = 1e-5
+    gamma = weight_variable([shape])
+    beta = weight_variable([shape])
+    mean, variance = tf.nn.moments(input, [0])
+    return gamma * (input - mean) / tf.sqrt(variance + eps) + beta
+
 def conv2d(x, W):
     return tf.nn.conv2d(x, W, strides = [1, 1, 1, 1], padding = 'SAME')
 
@@ -36,8 +43,9 @@ def predict(train, test, shape, cache_dir, log_dir, testing = False):
 
         with tf.name_scope('convolution1'):
             W_conv1 = weight_variable([5, 5, 1, LAYER[0]])
-            b_conv1 = bias_variable([LAYER[0]])
-            h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
+            h_conv1 = conv2d(x_image, W_conv1)
+            bn1 = batch_normalization(LAYER[0], h_conv1)
+            h_pool1 = max_pool_2x2(tf.nn.relu(bn1))
             _ = tf.histogram_summary('h_conv1', h_conv1)
 
         with tf.name_scope('pooling1'):
@@ -45,17 +53,18 @@ def predict(train, test, shape, cache_dir, log_dir, testing = False):
 
         with tf.name_scope('convolution2'):
             W_conv2 = weight_variable([5, 5, LAYER[0], LAYER[1]])
-            b_conv2 = bias_variable([LAYER[1]])
-            h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2) + b_conv2)
+            h_conv2 = conv2d(h_pool1, W_conv2)
+            bn2 = batch_normalization(LAYER[1], h_conv2)
+            h_pool2 = max_pool_2x2(tf.nn.relu(bn2))
 
         with tf.name_scope('pooling2'):
             h_pool2 = max_pool_2x2(h_conv2)
 
         with tf.name_scope('fully-connected'):
             W_fc1 = weight_variable([(shape[0] / 4) * (shape[1] / 4) * LAYER[1], LAYER[2]])
-            b_fc1 = bias_variable([LAYER[2]])
             h_pool2_flat = tf.reshape(h_pool2, [-1, (shape[0] / 4) * (shape[1] / 4) * LAYER[1]])
-            h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
+            bn3 = batch_normalization(LAYER[2], tf.matmul(h_pool2_flat, W_fc1))
+            h_fc1 = tf.nn.relu(bn3)
 
         with tf.name_scope('dropout'):
             keep_prob = tf.placeholder(tf.float32)
@@ -69,7 +78,7 @@ def predict(train, test, shape, cache_dir, log_dir, testing = False):
         with tf.name_scope('optimizer'):
             y_ = tf.placeholder(tf.float32, [None, LAYER[3]], name = 'y-input')
             cross_entropy = -tf.reduce_sum(y_ * tf.log(y_conv))
-            train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
+            train_step = tf.train.AdamOptimizer(1e-3).minimize(cross_entropy)
 
             prediction = tf.argmax(y_conv, 1)
             correct_prediction = tf.equal(prediction, tf.argmax(y_, 1))
@@ -80,7 +89,7 @@ def predict(train, test, shape, cache_dir, log_dir, testing = False):
             writer = tf.train.SummaryWriter(log_dir, sess.graph)
             sess.run(tf.initialize_all_variables())
     
-            for i in range(10001):
+            for i in range(5001):
                 batch = train.next_batch(50)
                 train_step.run(feed_dict = {x: batch[0], y_: batch[1], keep_prob: 0.5})
         
