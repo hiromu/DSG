@@ -69,7 +69,7 @@ def predict(train, test, shape, cache_dir, log_dir, testing = False):
         with tf.name_scope('optimizer'):
             y_ = tf.placeholder(tf.float32, [None, LAYER[3]], name = 'y-input')
             cross_entropy = -tf.reduce_sum(y_ * tf.log(y_conv))
-            train_step = tf.train.AdamOptimizer(0.0001).minimize(cross_entropy)
+            train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
 
             prediction = tf.argmax(y_conv, 1)
             correct_prediction = tf.equal(prediction, tf.argmax(y_, 1))
@@ -140,9 +140,10 @@ def vectorize(image_dir, files, cache_path = None, test = False):
 
     # ZCA Whitening
     for i in range(3):
+        eps = 1e-5
         sigma = numpy.dot(data[i], data[i].T) / float(data[i].shape[0])
         U, S, V = numpy.linalg.svd(sigma)
-        zca = numpy.dot(numpy.dot(U, numpy.diag(1.0 / numpy.sqrt(S + 1e-5))), U.T)
+        zca = numpy.dot(numpy.dot(U, numpy.diag(1.0 / numpy.sqrt(S + eps))), U.T)
         data[i] = numpy.dot(zca, data[i])
 
     ids = [numpy.array(id) for id in ids]

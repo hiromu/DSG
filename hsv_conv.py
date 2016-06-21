@@ -67,7 +67,7 @@ def predict(train, test, cache_dir, log_dir, testing = False):
         with tf.name_scope('optimizer'):
             y_ = tf.placeholder(tf.float32, [None, LAYER[3]], name = 'y-input')
             cross_entropy = -tf.reduce_sum(y_ * tf.log(y_conv))
-            train_step = tf.train.AdamOptimizer(0.0001).minimize(cross_entropy)
+            train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
 
             prediction = tf.argmax(y_conv, 1)
             correct_prediction = tf.equal(prediction, tf.argmax(y_, 1))
